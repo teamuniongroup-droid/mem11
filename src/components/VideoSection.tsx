@@ -23,6 +23,15 @@ const VideoSection = () => {
 
     let revealed = false;
 
+    // Bloqueia fullscreen automático do player
+    const originalRequestFullscreen = Element.prototype.requestFullscreen;
+    Element.prototype.requestFullscreen = function(...args) {
+      if (!revealed) {
+        return Promise.resolve();
+      }
+      return originalRequestFullscreen.apply(this, args);
+    };
+
     const setupPlayer = () => {
       const player = document.querySelector("vturb-smartplayer");
       if (player) {
@@ -41,16 +50,14 @@ const VideoSection = () => {
                 revealed = true;
                 clearInterval(checkVisibility);
                 
+                // Bloqueia fullscreen permanentemente
+                Element.prototype.requestFullscreen = function() {
+                  return Promise.resolve();
+                };
+                
                 if (document.fullscreenElement) {
-                  (player as any).fullscreen("off");
                   document.exitFullscreen().catch(() => {});
                 }
-                
-                document.addEventListener('fullscreenchange', () => {
-                  if (document.fullscreenElement) {
-                    document.exitFullscreen().catch(() => {});
-                  }
-                });
                 
                 window.dispatchEvent(new CustomEvent("startPricingTimer"));
                 
@@ -70,17 +77,16 @@ const VideoSection = () => {
     script.onload = setupPlayer;
 
     return () => {
+      Element.prototype.requestFullscreen = originalRequestFullscreen;
       const existingScript = document.querySelector(`script[src="${script.src}"]`);
       if (existingScript) existingScript.remove();
       if (style.parentNode) style.remove();
-      }
     };
   }, []);
 
   return (
     <section className="bg-background py-4 sm:py-8 md:py-12 pb-0">
       <div className="container mx-auto px-3 sm:px-4 max-w-4xl">
-        {/* Headline */}
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -92,7 +98,6 @@ const VideoSection = () => {
           </span>
         </motion.h1>
 
-        {/* Vturb Video Player Container */}
         <div className="max-w-[70%] sm:max-w-full mx-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -106,7 +111,6 @@ const VideoSection = () => {
             />
           </motion.div>
 
-          {/* Live indicators - aligned with video */}
           <div className="flex justify-between items-center gap-2 mt-2 sm:mt-4 text-[9px] sm:text-sm">
             <div className="flex items-center gap-1 sm:gap-2">
               <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-500 rounded-full animate-pulse" />
@@ -119,7 +123,6 @@ const VideoSection = () => {
           </div>
         </div>
 
-        {/* News logos */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
