@@ -12,66 +12,48 @@ declare global {
 
 const VideoSection = () => {
   useEffect(() => {
-    // Load Vturb player script
     const script = document.createElement("script");
     script.src = "https://scripts.converteai.net/d0d64cb2-dca3-4be6-983c-3bc700b6a1d8/players/698be6894b4e962da5d5adbc/v4/player.js";
     script.async = true;
     document.head.appendChild(script);
 
-    // Add CSS for hidden elements
     const style = document.createElement("style");
     style.textContent = `.esconder { display: none; }`;
     document.head.appendChild(style);
 
-    // Flag to disable fullscreen after scroll
-    let fullscreenDisabled = false;
+    let revealed = false;
 
-    // Setup player ready listener
     const setupPlayer = () => {
       const player = document.querySelector("vturb-smartplayer");
       if (player) {
         const delaySeconds = 2836;
         
         player.addEventListener("player:ready", function() {
-          // Display hidden elements after delay (synced with video time)
           (player as any).displayHiddenElements(delaySeconds, [".esconder"], {
             persist: true
           });
 
-          // Fullscreen on play (only if not disabled)
-          player.addEventListener("video:play", () => {
-            if (!fullscreenDisabled) {
-              (player as any).fullscreen("on");
-              player.scrollIntoView({ behavior: "smooth", block: "center" });
-            }
-          });
-
-          player.addEventListener("video:pause", () => {
-            if (!fullscreenDisabled) {
-              (player as any).fullscreen("off");
-            }
-          });
-          
-          // Check every 500ms if .esconder elements are now visible
           const checkVisibility = setInterval(() => {
             const pricingSection = document.querySelector('.esconder') as HTMLElement;
             
-            // If no elements with .esconder exist OR the element is visible
             if (!pricingSection || (pricingSection && getComputedStyle(pricingSection).display !== 'none')) {
-              if (!fullscreenDisabled) {
-                fullscreenDisabled = true;
+              if (!revealed) {
+                revealed = true;
                 clearInterval(checkVisibility);
                 
-                // Exit fullscreen
-                (player as any).fullscreen("off");
                 if (document.fullscreenElement) {
+                  (player as any).fullscreen("off");
                   document.exitFullscreen().catch(() => {});
                 }
                 
-                // Start the pricing timer and bottle counter
+                document.addEventListener('fullscreenchange', () => {
+                  if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(() => {});
+                  }
+                });
+                
                 window.dispatchEvent(new CustomEvent("startPricingTimer"));
                 
-                // Scroll to pricing section after small delay
                 setTimeout(() => {
                   const pricingSection = document.getElementById("pricing-section");
                   if (pricingSection) {
@@ -85,17 +67,12 @@ const VideoSection = () => {
       }
     };
 
-    // Wait for script to load then setup player
     script.onload = setupPlayer;
 
     return () => {
-      // Cleanup on unmount
       const existingScript = document.querySelector(`script[src="${script.src}"]`);
-      if (existingScript) {
-        existingScript.remove();
-      }
-      if (style.parentNode) {
-        style.remove();
+      if (existingScript) existingScript.remove();
+      if (style.parentNode) style.remove();
       }
     };
   }, []);
